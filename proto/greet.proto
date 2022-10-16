@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package greet.v1;
+
+option go_package = "github.com/easyCZ/connect-go-prometheus/gen/greet";
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string greeting = 1;
+}
+
+service GreetService {
+  rpc Greet(GreetRequest) returns (GreetResponse) {}
+}
