@@ -3,39 +3,51 @@ package connect_go_prometheus
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 )
 
 var ()
 
-func NewInterceptor(opts ...InterceptorOption) *Interceptor {
+func NewInterceptor(client *Metrics, server *Metrics) *Interceptor {
 	return &Interceptor{
-		server: NewServerMetrics(opts...),
+		client: client,
+		server: server,
 	}
 }
 
 var _ connect.Interceptor = (*Interceptor)(nil)
 
 type Interceptor struct {
-	server *ServerMetrics
+	client *Metrics
+	server *Metrics
 }
 
 func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		callPackage, callMethod := procedureToPackageAndMethod(req.Spec().Procedure)
+		now := time.Now()
 		callType := steamTypeString(req.Spec().StreamType)
+		callPackage, callMethod := procedureToPackageAndMethod(req.Spec().Procedure)
 
-		if !req.Spec().IsClient {
-			i.server.requestStartedCounter.WithLabelValues(callType, callPackage, callMethod).Inc()
+		var reporter *Metrics
+		if req.Spec().IsClient {
+			reporter = i.client
 		} else {
+			reporter = i.server
+		}
 
+		if reporter != nil {
+			reporter.ReportStarted(callType, callPackage, callMethod)
 		}
 
 		resp, err := next(ctx, req)
-
 		code := codeOf(err)
-		i.server.requestHandledCounter.WithLabelValues(callType, callPackage, callMethod, code).Inc()
+
+		if reporter != nil {
+			i.client.ReportHandled(callType, callPackage, callMethod, code)
+			i.client.ReportHandledSeconds(callType, callPackage, callMethod, code, time.Since(now).Seconds())
+		}
 
 		return resp, err
 	})
