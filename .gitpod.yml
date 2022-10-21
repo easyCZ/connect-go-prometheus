@@ -2,3 +2,8 @@ image: gitpod/workspace-full
 
 tasks:
   - init: go mod download
+
+vscode:
+  extensions:
+    - golang.go
+    - zxh404.vscode-proto3
