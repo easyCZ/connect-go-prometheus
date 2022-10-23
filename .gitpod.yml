@@ -1,7 +1,11 @@
 image: gitpod/workspace-full
 
 tasks:
-  - init: go mod download
+  - name: Download go modules
+    init: go mod download
+  - name: Install dependencies
+    init: |
+      go install github.com/bufbuild/buf/cmd/buf@v1.9.0
 
 vscode:
   extensions:

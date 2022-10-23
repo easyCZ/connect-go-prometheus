@@ -45,8 +45,8 @@ func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		code := codeOf(err)
 
 		if reporter != nil {
-			i.client.ReportHandled(callType, callPackage, callMethod, code)
-			i.client.ReportHandledSeconds(callType, callPackage, callMethod, code, time.Since(now).Seconds())
+			reporter.ReportHandled(callType, callPackage, callMethod, code)
+			reporter.ReportHandledSeconds(callType, callPackage, callMethod, code, time.Since(now).Seconds())
 		}
 
 		return resp, err
