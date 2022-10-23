@@ -32,12 +32,12 @@ func TestInterceptor_WithClient_WithServer_Histogram(t *testing.T) {
 
 	reg.MustRegister(clientMetrics, serverMetrics)
 
-	intereceptor := NewInterceptor(WithClientMetrics(clientMetrics), WithServerMetrics(serverMetrics))
+	interceptor := NewInterceptor(WithClientMetrics(clientMetrics), WithServerMetrics(serverMetrics))
 
-	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(interceptor))
 	srv := httptest.NewServer(handler)
 
-	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(interceptor))
 	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
 		Name: "elza",
 	}))
@@ -59,12 +59,12 @@ func TestInterceptor_WithClient_WithServer_Histogram(t *testing.T) {
 }
 
 func TestInterceptor_Default(t *testing.T) {
-	intereceptor := NewInterceptor()
+	interceptor := NewInterceptor()
 
-	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(interceptor))
 	srv := httptest.NewServer(handler)
 
-	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(interceptor))
 	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
 		Name: "elza",
 	}))
@@ -88,25 +88,30 @@ func TestInterceptor_WithClientMetrics(t *testing.T) {
 	clientMetrics := NewClientMetrics(testMetricOptions...)
 	require.NoError(t, reg.Register(clientMetrics))
 
-	intereceptor := NewInterceptor(WithClientMetrics(clientMetrics))
+	interceptor := NewInterceptor(WithClientMetrics(clientMetrics), WithServerMetrics(nil))
 
-	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(interceptor))
 	srv := httptest.NewServer(handler)
 
-	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(interceptor))
 	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
 		Name: "elza",
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeOf(err), connect.CodeUnimplemented)
 
-	expectedMetrics := []string{
+	possibleMetrics := []string{
+		"namespace_subsystem_connect_client_handled_seconds",
 		"namespace_subsystem_connect_client_handled_total",
 		"namespace_subsystem_connect_client_started_total",
+
+		"namespace_subsystem_connect_server_handled_seconds",
+		"namespace_subsystem_connect_server_handled_total",
+		"namespace_subsystem_connect_server_started_total",
 	}
-	count, err := testutil.GatherAndCount(reg, expectedMetrics...)
+	count, err := testutil.GatherAndCount(reg, possibleMetrics...)
 	require.NoError(t, err)
-	require.Equal(t, len(expectedMetrics), count)
+	require.Equal(t, 3, count, "must report only 3 metrics, as server side is disabled")
 }
 
 func TestInterceptor_WithServerMetrics(t *testing.T) {
@@ -114,23 +119,28 @@ func TestInterceptor_WithServerMetrics(t *testing.T) {
 	serverMetrics := NewServerMetrics(testMetricOptions...)
 	require.NoError(t, reg.Register(serverMetrics))
 
-	intereceptor := NewInterceptor(WithServerMetrics(serverMetrics))
+	interceptor := NewInterceptor(WithServerMetrics(serverMetrics), WithClientMetrics(nil))
 
-	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(interceptor))
 	srv := httptest.NewServer(handler)
 
-	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(interceptor))
 	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
 		Name: "elza",
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeOf(err), connect.CodeUnimplemented)
 
-	expectedMetrics := []string{
+	possibleMetrics := []string{
+		"namespace_subsystem_connect_client_handled_seconds",
+		"namespace_subsystem_connect_client_handled_total",
+		"namespace_subsystem_connect_client_started_total",
+
+		"namespace_subsystem_connect_server_handled_seconds",
 		"namespace_subsystem_connect_server_handled_total",
 		"namespace_subsystem_connect_server_started_total",
 	}
-	count, err := testutil.GatherAndCount(reg, expectedMetrics...)
+	count, err := testutil.GatherAndCount(reg, possibleMetrics...)
 	require.NoError(t, err)
-	require.Equal(t, len(expectedMetrics), count)
+	require.Equal(t, 3, count, "must report only server side metrics, client-side is disabled")
 }

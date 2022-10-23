@@ -29,6 +29,11 @@ type Interceptor struct {
 
 func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		// Short-circuit, not configured to report for either client or server.
+		if i.client == nil && i.server == nil {
+			return next(ctx, req)
+		}
+
 		now := time.Now()
 		callType := steamTypeString(req.Spec().StreamType)
 		callPackage, callMethod := procedureToPackageAndMethod(req.Spec().Procedure)
