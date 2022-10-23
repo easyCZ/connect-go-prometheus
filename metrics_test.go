@@ -20,7 +20,7 @@ func TestServerMetrics(t *testing.T) {
 		WithConstLabels(prom.Labels{"component": "foo"}),
 		WithHistogramBuckets([]float64{0.5, 1, 1.5}),
 	)
-	require.NoError(t, sm.Register(reg))
+	require.NoError(t, reg.Register(sm))
 
 	started := sm.requestStarted.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet")
 	started.Inc()
@@ -50,28 +50,28 @@ func TestServerMetrics(t *testing.T) {
 
 func TestClientMetrics(t *testing.T) {
 	reg := prom.NewRegistry()
-	sm := NewClientMetrics(
+	cm := NewClientMetrics(
 		WithHistogram(true),
 		WithNamespace("namespace"),
 		WithSubsystem("subsystem"),
 		WithConstLabels(prom.Labels{"component": "foo"}),
 		WithHistogramBuckets([]float64{0.5, 1, 1.5}),
 	)
-	require.NoError(t, sm.Register(reg))
+	require.NoError(t, reg.Register(cm))
 
-	started := sm.requestStarted.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet")
+	started := cm.requestStarted.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet")
 	started.Inc()
 	require.EqualValues(t, float64(1), testutil.ToFloat64(started))
 
-	handled := sm.requestHandled.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
+	handled := cm.requestHandled.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
 	handled.Inc()
 	require.EqualValues(t, 1, testutil.ToFloat64(handled))
 
-	if sm.requestHandledSeconds != nil {
-		handledHist := sm.requestHandledSeconds.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
+	if cm.requestHandledSeconds != nil {
+		handledHist := cm.requestHandledSeconds.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
 		handledHist.Observe(1)
 
-		err := testutil.CollectAndCompare(sm.requestHandledSeconds, strings.NewReader(`
+		err := testutil.CollectAndCompare(cm.requestHandledSeconds, strings.NewReader(`
 			# HELP namespace_subsystem_connect_client_handled_seconds Histogram of RPCs handled client-side
 			# TYPE namespace_subsystem_connect_client_handled_seconds histogram
 			namespace_subsystem_connect_client_handled_seconds_bucket{code="aborted",component="foo",method="Greet",service="greet.v1.GreetService",type="unary",le="0.5"} 0

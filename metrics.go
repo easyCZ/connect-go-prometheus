@@ -83,29 +83,30 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 	return m
 }
 
+var _ prom.Collector = (*Metrics)(nil)
+
 type Metrics struct {
 	requestStarted        *prom.CounterVec
 	requestHandled        *prom.CounterVec
 	requestHandledSeconds *prom.HistogramVec
 }
 
-// Register registers the ClientMetrics with a prometheus.Registry
-func (m *Metrics) Register(registry *prom.Registry) error {
-	if err := registry.Register(m.requestStarted); err != nil {
-		return err
-	}
-
-	if err := registry.Register(m.requestHandled); err != nil {
-		return err
-	}
-
+// Describe implements Describe as required by prom.Collector
+func (m *Metrics) Describe(c chan<- *prom.Desc) {
+	m.requestStarted.Describe(c)
+	m.requestHandled.Describe(c)
 	if m.requestHandledSeconds != nil {
-		if err := registry.Register(m.requestHandledSeconds); err != nil {
-			return err
-		}
+		m.requestHandledSeconds.Describe(c)
 	}
+}
 
-	return nil
+// Collect implements collect as required by prom.Collector
+func (m *Metrics) Collect(c chan<- prom.Metric) {
+	m.requestStarted.Collect(c)
+	m.requestHandled.Collect(c)
+	if m.requestHandledSeconds != nil {
+		m.requestHandledSeconds.Collect(c)
+	}
 }
 
 func (m *Metrics) ReportStarted(callType, service, method string) {
