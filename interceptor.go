@@ -8,12 +8,15 @@ import (
 	"github.com/bufbuild/connect-go"
 )
 
-var ()
+func NewInterceptor(opts ...InterecptorOption) *Interceptor {
+	options := evaluteInterceptorOptions(&interceptorOptions{
+		client: DefaultClientMetrics,
+		server: DefaultServerMetrics,
+	}, opts...)
 
-func NewInterceptor(client *Metrics, server *Metrics) *Interceptor {
 	return &Interceptor{
-		client: client,
-		server: server,
+		client: options.client,
+		server: options.server,
 	}
 }
 
@@ -94,4 +97,30 @@ func codeOf(err error) string {
 		return "ok"
 	}
 	return connect.CodeOf(err).String()
+}
+
+type interceptorOptions struct {
+	client *Metrics
+	server *Metrics
+}
+
+type InterecptorOption func(*interceptorOptions)
+
+func WithClientMetrics(m *Metrics) InterecptorOption {
+	return func(io *interceptorOptions) {
+		io.client = m
+	}
+}
+
+func WithServerMetrics(m *Metrics) InterecptorOption {
+	return func(io *interceptorOptions) {
+		io.server = m
+	}
+}
+
+func evaluteInterceptorOptions(defaults *interceptorOptions, opts ...InterecptorOption) *interceptorOptions {
+	for _, opt := range opts {
+		opt(defaults)
+	}
+	return defaults
 }

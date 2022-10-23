@@ -4,6 +4,17 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	DefaultClientMetrics = NewClientMetrics()
+	DefaultServerMetrics = NewServerMetrics()
+)
+
+func init() {
+	// Register default metrics against default prometheus metrics registry.
+	prom.MustRegister(DefaultServerMetrics)
+	prom.MustRegister(DefaultClientMetrics)
+}
+
 // NewServerMetrics creates new Connect metrics for server-side handling.
 func NewServerMetrics(opts ...MetricsOption) *Metrics {
 	config := evaluateMetricsOptions(&metricsOptions{
@@ -160,24 +171,6 @@ func WithNamespace(namespace string) MetricsOption {
 func WithSubsystem(subsystem string) MetricsOption {
 	return func(opts *metricsOptions) {
 		opts.subsystem = subsystem
-	}
-}
-
-func withRequestStartedName(name string) MetricsOption {
-	return func(opts *metricsOptions) {
-		opts.requestStartedName = name
-	}
-}
-
-func withrequestHandledName(name string) MetricsOption {
-	return func(opts *metricsOptions) {
-		opts.requestHandledName = name
-	}
-}
-
-func withRequestedHandledSecondsName(name string) MetricsOption {
-	return func(opts *metricsOptions) {
-		opts.requestHandledSecondsName = name
 	}
 }
 

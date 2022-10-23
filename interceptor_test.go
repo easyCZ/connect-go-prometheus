@@ -14,21 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInterceptor_WithHistogram(t *testing.T) {
-	reg := prom.NewRegistry()
-	opts := []MetricsOption{
+var (
+	testMetricOptions = []MetricsOption{
 		WithHistogram(true),
 		WithNamespace("namespace"),
 		WithSubsystem("subsystem"),
 		WithConstLabels(prom.Labels{"component": "foo"}),
 		WithHistogramBuckets([]float64{1, 5}),
 	}
-	clientMetrics := NewClientMetrics(opts...)
-	serverMetrics := NewServerMetrics(opts...)
+)
+
+func TestInterceptor_WithClient_WithServer_Histogram(t *testing.T) {
+	reg := prom.NewRegistry()
+
+	clientMetrics := NewClientMetrics(testMetricOptions...)
+	serverMetrics := NewServerMetrics(testMetricOptions...)
 
 	reg.MustRegister(clientMetrics, serverMetrics)
 
-	intereceptor := NewInterceptor(clientMetrics, serverMetrics)
+	intereceptor := NewInterceptor(WithClientMetrics(clientMetrics), WithServerMetrics(serverMetrics))
 
 	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
 	srv := httptest.NewServer(handler)
@@ -54,19 +58,37 @@ func TestInterceptor_WithHistogram(t *testing.T) {
 	require.Equal(t, len(expectedMetrics), count)
 }
 
-func TestInterceptor_WithoutHistogram(t *testing.T) {
-	reg := prom.NewRegistry()
-	opts := []MetricsOption{
-		WithNamespace("namespace"),
-		WithSubsystem("subsystem"),
-		WithConstLabels(prom.Labels{"component": "foo"}),
+func TestInterceptor_Default(t *testing.T) {
+	intereceptor := NewInterceptor()
+
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	srv := httptest.NewServer(handler)
+
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
+		Name: "elza",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeOf(err), connect.CodeUnimplemented)
+
+	expectedMetrics := []string{
+		"connect_client_handled_total",
+		"connect_client_started_total",
+
+		"connect_server_handled_total",
+		"connect_server_started_total",
 	}
-	clientMetrics := NewClientMetrics(opts...)
-	serverMetrics := NewServerMetrics(opts...)
+	count, err := testutil.GatherAndCount(prom.DefaultGatherer, expectedMetrics...)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedMetrics), count)
+}
 
-	reg.MustRegister(clientMetrics, serverMetrics)
+func TestInterceptor_WithClientMetrics(t *testing.T) {
+	reg := prom.NewRegistry()
+	clientMetrics := NewClientMetrics(testMetricOptions...)
+	require.NoError(t, reg.Register(clientMetrics))
 
-	intereceptor := NewInterceptor(clientMetrics, serverMetrics)
+	intereceptor := NewInterceptor(WithClientMetrics(clientMetrics))
 
 	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
 	srv := httptest.NewServer(handler)
@@ -81,7 +103,30 @@ func TestInterceptor_WithoutHistogram(t *testing.T) {
 	expectedMetrics := []string{
 		"namespace_subsystem_connect_client_handled_total",
 		"namespace_subsystem_connect_client_started_total",
+	}
+	count, err := testutil.GatherAndCount(reg, expectedMetrics...)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedMetrics), count)
+}
 
+func TestInterceptor_WithServerMetrics(t *testing.T) {
+	reg := prom.NewRegistry()
+	serverMetrics := NewServerMetrics(testMetricOptions...)
+	require.NoError(t, reg.Register(serverMetrics))
+
+	intereceptor := NewInterceptor(WithServerMetrics(serverMetrics))
+
+	_, handler := greetconnect.NewGreetServiceHandler(greetconnect.UnimplementedGreetServiceHandler{}, connect.WithInterceptors(intereceptor))
+	srv := httptest.NewServer(handler)
+
+	client := greetconnect.NewGreetServiceClient(http.DefaultClient, srv.URL, connect.WithInterceptors(intereceptor))
+	_, err := client.Greet(context.Background(), connect.NewRequest(&greet.GreetRequest{
+		Name: "elza",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeOf(err), connect.CodeUnimplemented)
+
+	expectedMetrics := []string{
 		"namespace_subsystem_connect_server_handled_total",
 		"namespace_subsystem_connect_server_started_total",
 	}
