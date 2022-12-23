@@ -26,6 +26,10 @@ func TestServerMetrics(t *testing.T) {
 	started.Inc()
 	require.EqualValues(t, float64(1), testutil.ToFloat64(started))
 
+	handled := sm.requestHandled.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
+	handled.Inc()
+	require.EqualValues(t, 1, testutil.ToFloat64(handled))
+
 	msgSent := sm.streamMsgSent.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet")
 	msgSent.Inc()
 	require.EqualValues(t, float64(1), testutil.ToFloat64(msgSent))
@@ -33,10 +37,6 @@ func TestServerMetrics(t *testing.T) {
 	msgReceived := sm.streamMsgReceived.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet")
 	msgReceived.Inc()
 	require.EqualValues(t, float64(1), testutil.ToFloat64(msgReceived))
-
-	handled := sm.requestHandled.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
-	handled.Inc()
-	require.EqualValues(t, 1, testutil.ToFloat64(handled))
 
 	if sm.requestHandledSeconds != nil {
 		handledHist := sm.requestHandledSeconds.WithLabelValues("unary", greetconnect.GreetServiceName, "Greet", connect.CodeAborted.String())
