@@ -22,6 +22,8 @@ func NewServerMetrics(opts ...MetricsOption) *Metrics {
 		requestStartedName:        "connect_server_started_total",
 		requestHandledName:        "connect_server_handled_total",
 		requestHandledSecondsName: "connect_server_handled_seconds",
+		streamMsgSentName:         "connect_server_msg_sent_total",
+		streamMsgReceivedName:     "connect_server_msg_received_total",
 	}, opts...)
 
 	m := &Metrics{
@@ -39,6 +41,20 @@ func NewServerMetrics(opts ...MetricsOption) *Metrics {
 			Name:        config.requestHandledName,
 			Help:        "Total number of RPCs handled server-side",
 		}, []string{"type", "service", "method", "code"}),
+		streamMsgSent: prom.NewCounterVec(prom.CounterOpts{
+			Namespace:   config.namespace,
+			Subsystem:   config.subsystem,
+			ConstLabels: config.constLabels,
+			Name:        config.streamMsgSentName,
+			Help:        "Total number of stream messages sent by server-side",
+		}, []string{"type", "service", "method"}),
+		streamMsgReceived: prom.NewCounterVec(prom.CounterOpts{
+			Namespace:   config.namespace,
+			Subsystem:   config.subsystem,
+			ConstLabels: config.constLabels,
+			Name:        config.streamMsgReceivedName,
+			Help:        "Total number of stream messages recieved by server-side",
+		}, []string{"type", "service", "method"}),
 	}
 
 	if config.withHistogram {
@@ -61,6 +77,8 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 		requestStartedName:        "connect_client_started_total",
 		requestHandledName:        "connect_client_handled_total",
 		requestHandledSecondsName: "connect_client_handled_seconds",
+		streamMsgSentName:         "connect_client_msg_sent_total",
+		streamMsgReceivedName:     "connect_client_msg_recieved_total",
 	}, opts...)
 
 	m := &Metrics{
@@ -78,6 +96,20 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 			Name:        config.requestHandledName,
 			Help:        "Total number of RPCs handled client-side",
 		}, []string{"type", "service", "method", "code"}),
+		streamMsgSent: prom.NewCounterVec(prom.CounterOpts{
+			Namespace:   config.namespace,
+			Subsystem:   config.subsystem,
+			ConstLabels: config.constLabels,
+			Name:        config.streamMsgSentName,
+			Help:        "Total number of stream messages sent by client-side",
+		}, []string{"type", "service", "method"}),
+		streamMsgReceived: prom.NewCounterVec(prom.CounterOpts{
+			Namespace:   config.namespace,
+			Subsystem:   config.subsystem,
+			ConstLabels: config.constLabels,
+			Name:        config.streamMsgReceivedName,
+			Help:        "Total number of stream messages recieved by client-side",
+		}, []string{"type", "service", "method"}),
 	}
 
 	if config.withHistogram {
@@ -100,6 +132,8 @@ type Metrics struct {
 	requestStarted        *prom.CounterVec
 	requestHandled        *prom.CounterVec
 	requestHandledSeconds *prom.HistogramVec
+	streamMsgSent         *prom.CounterVec
+	streamMsgReceived     *prom.CounterVec
 }
 
 // Describe implements Describe as required by prom.Collector
@@ -109,6 +143,8 @@ func (m *Metrics) Describe(c chan<- *prom.Desc) {
 	if m.requestHandledSeconds != nil {
 		m.requestHandledSeconds.Describe(c)
 	}
+	m.streamMsgSent.Describe(c)
+	m.streamMsgReceived.Describe(c)
 }
 
 // Collect implements collect as required by prom.Collector
@@ -118,14 +154,18 @@ func (m *Metrics) Collect(c chan<- prom.Metric) {
 	if m.requestHandledSeconds != nil {
 		m.requestHandledSeconds.Collect(c)
 	}
+	m.streamMsgSent.Collect(c)
+	m.streamMsgReceived.Collect(c)
 }
 
 func (m *Metrics) ReportStarted(callType, service, method string) {
 	m.requestStarted.WithLabelValues(callType, service, method).Inc()
+	m.streamMsgSent.WithLabelValues(callType, service, method).Inc()
 }
 
 func (m *Metrics) ReportHandled(callType, service, method, code string) {
 	m.requestHandled.WithLabelValues(callType, service, method, code).Inc()
+	m.streamMsgReceived.WithLabelValues(callType, service, method).Inc()
 }
 
 func (m *Metrics) ReportHandledSeconds(callType, service, method, code string, val float64) {
@@ -144,6 +184,8 @@ type metricsOptions struct {
 	requestStartedName        string
 	requestHandledName        string
 	requestHandledSecondsName string
+	streamMsgSentName         string
+	streamMsgReceivedName     string
 
 	constLabels prom.Labels
 }
