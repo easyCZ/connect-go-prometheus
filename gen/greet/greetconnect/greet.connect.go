@@ -28,6 +28,9 @@ const (
 // GreetServiceClient is a client for the greet.v1.GreetService service.
 type GreetServiceClient interface {
 	Greet(context.Context, *connect_go.Request[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error)
+	ServerStreamGreet(context.Context, *connect_go.Request[greet.GreetRequest]) (*connect_go.ServerStreamForClient[greet.GreetResponse], error)
+	ClientStreamGreet(context.Context) *connect_go.ClientStreamForClient[greet.GreetRequest, greet.GreetResponse]
+	BidirectionalGreet(context.Context) *connect_go.ClientStreamForClient[greet.GreetRequest, greet.GreetResponse]
 }
 
 // NewGreetServiceClient constructs a client for the greet.v1.GreetService service. By default, it
@@ -45,12 +48,30 @@ func NewGreetServiceClient(httpClient connect_go.HTTPClient, baseURL string, opt
 			baseURL+"/greet.v1.GreetService/Greet",
 			opts...,
 		),
+		serverStreamGreet: connect_go.NewClient[greet.GreetRequest, greet.GreetResponse](
+			httpClient,
+			baseURL+"/greet.v1.GreetService/ServerStreamGreet",
+			opts...,
+		),
+		clientStreamGreet: connect_go.NewClient[greet.GreetRequest, greet.GreetResponse](
+			httpClient,
+			baseURL+"/greet.v1.GreetService/ClientStreamGreet",
+			opts...,
+		),
+		bidirectionalGreet: connect_go.NewClient[greet.GreetRequest, greet.GreetResponse](
+			httpClient,
+			baseURL+"/greet.v1.GreetService/BidirectionalGreet",
+			opts...,
+		),
 	}
 }
 
 // greetServiceClient implements GreetServiceClient.
 type greetServiceClient struct {
-	greet *connect_go.Client[greet.GreetRequest, greet.GreetResponse]
+	greet              *connect_go.Client[greet.GreetRequest, greet.GreetResponse]
+	serverStreamGreet  *connect_go.Client[greet.GreetRequest, greet.GreetResponse]
+	clientStreamGreet  *connect_go.Client[greet.GreetRequest, greet.GreetResponse]
+	bidirectionalGreet *connect_go.Client[greet.GreetRequest, greet.GreetResponse]
 }
 
 // Greet calls greet.v1.GreetService.Greet.
@@ -58,9 +79,27 @@ func (c *greetServiceClient) Greet(ctx context.Context, req *connect_go.Request[
 	return c.greet.CallUnary(ctx, req)
 }
 
+// ServerStreamGreet calls greet.v1.GreetService.ServerStreamGreet.
+func (c *greetServiceClient) ServerStreamGreet(ctx context.Context, req *connect_go.Request[greet.GreetRequest]) (*connect_go.ServerStreamForClient[greet.GreetResponse], error) {
+	return c.serverStreamGreet.CallServerStream(ctx, req)
+}
+
+// ClientStreamGreet calls greet.v1.GreetService.ClientStreamGreet.
+func (c *greetServiceClient) ClientStreamGreet(ctx context.Context) *connect_go.ClientStreamForClient[greet.GreetRequest, greet.GreetResponse] {
+	return c.clientStreamGreet.CallClientStream(ctx)
+}
+
+// BidirectionalGreet calls greet.v1.GreetService.BidirectionalGreet.
+func (c *greetServiceClient) BidirectionalGreet(ctx context.Context) *connect_go.ClientStreamForClient[greet.GreetRequest, greet.GreetResponse] {
+	return c.bidirectionalGreet.CallClientStream(ctx)
+}
+
 // GreetServiceHandler is an implementation of the greet.v1.GreetService service.
 type GreetServiceHandler interface {
 	Greet(context.Context, *connect_go.Request[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error)
+	ServerStreamGreet(context.Context, *connect_go.Request[greet.GreetRequest], *connect_go.ServerStream[greet.GreetResponse]) error
+	ClientStreamGreet(context.Context, *connect_go.ClientStream[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error)
+	BidirectionalGreet(context.Context, *connect_go.ClientStream[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error)
 }
 
 // NewGreetServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -75,6 +114,21 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect_go.HandlerO
 		svc.Greet,
 		opts...,
 	))
+	mux.Handle("/greet.v1.GreetService/ServerStreamGreet", connect_go.NewServerStreamHandler(
+		"/greet.v1.GreetService/ServerStreamGreet",
+		svc.ServerStreamGreet,
+		opts...,
+	))
+	mux.Handle("/greet.v1.GreetService/ClientStreamGreet", connect_go.NewClientStreamHandler(
+		"/greet.v1.GreetService/ClientStreamGreet",
+		svc.ClientStreamGreet,
+		opts...,
+	))
+	mux.Handle("/greet.v1.GreetService/BidirectionalGreet", connect_go.NewClientStreamHandler(
+		"/greet.v1.GreetService/BidirectionalGreet",
+		svc.BidirectionalGreet,
+		opts...,
+	))
 	return "/greet.v1.GreetService/", mux
 }
 
@@ -83,4 +137,16 @@ type UnimplementedGreetServiceHandler struct{}
 
 func (UnimplementedGreetServiceHandler) Greet(context.Context, *connect_go.Request[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("greet.v1.GreetService.Greet is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) ServerStreamGreet(context.Context, *connect_go.Request[greet.GreetRequest], *connect_go.ServerStream[greet.GreetResponse]) error {
+	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("greet.v1.GreetService.ServerStreamGreet is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) ClientStreamGreet(context.Context, *connect_go.ClientStream[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("greet.v1.GreetService.ClientStreamGreet is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) BidirectionalGreet(context.Context, *connect_go.ClientStream[greet.GreetRequest]) (*connect_go.Response[greet.GreetResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("greet.v1.GreetService.BidirectionalGreet is not implemented"))
 }
