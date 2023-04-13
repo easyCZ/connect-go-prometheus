@@ -61,15 +61,28 @@ func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	})
 }
 
-func (i *Interceptor) WrapStreamingClient(connect.StreamingClientFunc) connect.StreamingClientFunc {
+func (i *Interceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
 	return connect.StreamingClientFunc(func(ctx context.Context, s connect.Spec) connect.StreamingClientConn {
-		return nil
+		conn := next(ctx, s)
+		if i.client != nil {
+			conn = newStreamingClientConn(conn, i)
+		}
+		return conn
 	})
 }
 
-func (i *Interceptor) WrapStreamingHandler(connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (i *Interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return connect.StreamingHandlerFunc(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
-		return nil
+		var newShc *streamingHandlerConn
+		if i.server != nil {
+			newShc = newStreamingHandlerConn(shc, i)
+			shc = newShc
+		}
+		err := next(ctx, shc)
+		if newShc != nil {
+			newShc.reportHandled(err)
+		}
+		return err
 	})
 }
 
