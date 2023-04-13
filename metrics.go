@@ -53,7 +53,7 @@ func NewServerMetrics(opts ...MetricsOption) *Metrics {
 			Subsystem:   config.subsystem,
 			ConstLabels: config.constLabels,
 			Name:        config.streamMsgReceivedName,
-			Help:        "Total number of stream messages recieved by server-side",
+			Help:        "Total number of stream messages received by server-side",
 		}, []string{"type", "service", "method"}),
 	}
 
@@ -108,7 +108,7 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 			Subsystem:   config.subsystem,
 			ConstLabels: config.constLabels,
 			Name:        config.streamMsgReceivedName,
-			Help:        "Total number of stream messages recieved by client-side",
+			Help:        "Total number of stream messages received by client-side",
 		}, []string{"type", "service", "method"}),
 	}
 
