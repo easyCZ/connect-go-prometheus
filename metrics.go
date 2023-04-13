@@ -27,6 +27,7 @@ func NewServerMetrics(opts ...MetricsOption) *Metrics {
 	}, opts...)
 
 	m := &Metrics{
+		isClient: false,
 		requestStarted: prom.NewCounterVec(prom.CounterOpts{
 			Namespace:   config.namespace,
 			Subsystem:   config.subsystem,
@@ -82,6 +83,7 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 	}, opts...)
 
 	m := &Metrics{
+		isClient: true,
 		requestStarted: prom.NewCounterVec(prom.CounterOpts{
 			Namespace:   config.namespace,
 			Subsystem:   config.subsystem,
@@ -129,6 +131,7 @@ func NewClientMetrics(opts ...MetricsOption) *Metrics {
 var _ prom.Collector = (*Metrics)(nil)
 
 type Metrics struct {
+	isClient              bool
 	requestStarted        *prom.CounterVec
 	requestHandled        *prom.CounterVec
 	requestHandledSeconds *prom.HistogramVec
@@ -160,12 +163,26 @@ func (m *Metrics) Collect(c chan<- prom.Metric) {
 
 func (m *Metrics) ReportStarted(callType, service, method string) {
 	m.requestStarted.WithLabelValues(callType, service, method).Inc()
-	m.streamMsgSent.WithLabelValues(callType, service, method).Inc()
+	var streamMsg *prom.CounterVec
+	if m.isClient {
+		streamMsg = m.streamMsgSent
+	} else {
+		streamMsg = m.streamMsgReceived
+	}
+	streamMsg.WithLabelValues(callType, service, method).Inc()
 }
 
 func (m *Metrics) ReportHandled(callType, service, method, code string) {
 	m.requestHandled.WithLabelValues(callType, service, method, code).Inc()
-	m.streamMsgReceived.WithLabelValues(callType, service, method).Inc()
+	if code == CodeOk {
+		var streamMsg *prom.CounterVec
+		if m.isClient {
+			streamMsg = m.streamMsgReceived
+		} else {
+			streamMsg = m.streamMsgSent
+		}
+		streamMsg.WithLabelValues(callType, service, method).Inc()
+	}
 }
 
 func (m *Metrics) ReportHandledSeconds(callType, service, method, code string, val float64) {

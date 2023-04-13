@@ -8,6 +8,10 @@ import (
 	"github.com/bufbuild/connect-go"
 )
 
+const (
+	CodeOk = "ok"
+)
+
 func NewInterceptor(opts ...InterecptorOption) *Interceptor {
 	options := evaluteInterceptorOptions(&interceptorOptions{
 		client: DefaultClientMetrics,
@@ -112,7 +116,7 @@ func steamTypeString(st connect.StreamType) string {
 
 func codeOf(err error) string {
 	if err == nil {
-		return "ok"
+		return CodeOk
 	}
 	return connect.CodeOf(err).String()
 }
