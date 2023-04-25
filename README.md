@@ -115,3 +115,5 @@ interceptor := connect_go_prometheus.NewInterceptor(
     connect_go_prometheus.WithServerMetrics(nil),
 )
 ```
+
+test
