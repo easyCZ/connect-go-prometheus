@@ -2,6 +2,7 @@ package connect_go_prometheus
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -118,7 +119,15 @@ func codeOf(err error) string {
 	if err == nil {
 		return CodeOk
 	}
-	return connect.CodeOf(err).String()
+	code := connect.CodeOf(err)
+	if code == connect.CodeUnknown {
+		if errors.Is(err, context.Canceled) {
+			code = connect.CodeCanceled
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			code = connect.CodeDeadlineExceeded
+		}
+	}
+	return code.String()
 }
 
 type interceptorOptions struct {
