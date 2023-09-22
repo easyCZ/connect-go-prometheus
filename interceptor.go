@@ -13,7 +13,7 @@ const (
 	CodeOk = "ok"
 )
 
-func NewInterceptor(opts ...InterecptorOption) *Interceptor {
+func NewInterceptor(opts ...InterceptorOption) *Interceptor {
 	options := evaluteInterceptorOptions(&interceptorOptions{
 		client: DefaultClientMetrics,
 		server: DefaultServerMetrics,
@@ -135,21 +135,21 @@ type interceptorOptions struct {
 	server *Metrics
 }
 
-type InterecptorOption func(*interceptorOptions)
+type InterceptorOption func(*interceptorOptions)
 
-func WithClientMetrics(m *Metrics) InterecptorOption {
+func WithClientMetrics(m *Metrics) InterceptorOption {
 	return func(io *interceptorOptions) {
 		io.client = m
 	}
 }
 
-func WithServerMetrics(m *Metrics) InterecptorOption {
+func WithServerMetrics(m *Metrics) InterceptorOption {
 	return func(io *interceptorOptions) {
 		io.server = m
 	}
 }
 
-func evaluteInterceptorOptions(defaults *interceptorOptions, opts ...InterecptorOption) *interceptorOptions {
+func evaluteInterceptorOptions(defaults *interceptorOptions, opts ...InterceptorOption) *interceptorOptions {
 	for _, opt := range opts {
 		opt(defaults)
 	}
