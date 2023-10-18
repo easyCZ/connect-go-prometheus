@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 )
 
 func NewInterceptor(opts ...InterecptorOption) *Interceptor {
