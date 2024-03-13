@@ -6,7 +6,7 @@ require (
 	github.com/bufbuild/connect-go v1.0.0
 	github.com/prometheus/client_golang v1.13.0
 	github.com/stretchr/testify v1.4.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
